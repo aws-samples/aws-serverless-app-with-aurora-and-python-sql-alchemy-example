@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Create the database schema for the Simple Online Bookstore via a schema Lambda and Lambda Layer
+
+Parameters:
+
+  AuroraVPCStackName:
+    Description: Name of the Aurora Database VPC Cloudformation stack
+    Type: String
+  AuroraDBSecretName:
+    Description: Name of the Aurora Database secret
+    Type: String
+  AuroraRDSProxyStackName:
+    Description: Name of the RDS Proxy Cloudformation stack
+    Type: String
+
+Resources:
+
+  # Triggers DB schema creation
+  SimpleBookStoreDBSchemaLambdaFunctionTrigger:
+    Type: Custom::SimpleBookStoreDBSchemaLambdaFunction
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt SimpleBookStoreDBSchemaLambdaFunction.Arn
+
+  # Lambda function that will create the DB schema from SQLAlchemy models defined in the Lambda Layer
+  SimpleBookStoreDBSchemaLambdaFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      FunctionName: sob_schema_creation_lambda
+      CodeUri: ./db_schema_lambda/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Timeout: 30
+      Layers:
+        - !Ref SimpleBookStoreDBSchemaLambdaLayer
+      Role: !GetAtt SimpleBookStoreDBSchemaLambdaFunctionRole.Arn
+      VpcConfig:
+        SecurityGroupIds: !Split [',', {'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SecretRotationLambdaSecurityGroup'}]
+        SubnetIds: !Split [',', {'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SubnetsPrivate'}]
+      Environment:
+        Variables:
+          AURORA_DB_SECRET_NAME: !Ref AuroraDBSecretName
+          AURORA_DB_PROXY_ENDPOINT: 
+            Fn::ImportValue: 
+              !Sub '${AuroraRDSProxyStackName}-SOBRDSProxyEndpoint'
+    
+
+  # Lambda function role
+  SimpleBookStoreDBSchemaLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: create-schema-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:PutResourcePolicy
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:DeleteSecret
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:TagResource
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:ListSecrets
+                  - secretsmanager:GetRandomPassword
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AuroraDBSecretName}*"
+              - Effect: Allow
+                Action:
+                  - rds-db:connect
+                Resource: 
+                  Fn::ImportValue: 
+                    !Sub '${AuroraRDSProxyStackName}-SOBRDSProxyArn'              
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  # Lambda layer that contains the SQLAlchemy ORM objects that will be used to create the schema and access the DB
+  SimpleBookStoreDBSchemaLambdaLayer:
+      Type: AWS::Serverless::LayerVersion
+      Properties:
+          LayerName: sqlalchemy-models-lambda-layer
+          Description: SQLAlchemy models and utilities for the Simple Online Boostore
+          ContentUri: ./db_schema_lambda_layer/
+          CompatibleRuntimes:
+            - python3.8
+          LicenseInfo: 'MIT'
+          RetentionPolicy: Retain
+
+Outputs:
+
+  SimpleOnlineBookstoreDBSchemaLambdaArn:
+    Description: Simple Online Bookstore database schema Lambda Arn
+    Value: !Ref SimpleBookStoreDBSchemaLambdaFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-DBSchemaLambdaArn'
+
+  SimpleOnlineBookstoreDBSchemaLambdaLayer:
+    Description: Simple Online Bookstore database schema Lambda layer Arn
+    Value: !Ref SimpleBookStoreDBSchemaLambdaLayer
+    Export:
+      Name: !Sub '${AWS::StackName}-DBSchemaLambdaLayerArn'

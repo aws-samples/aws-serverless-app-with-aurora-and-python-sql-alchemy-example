@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template for Simple Online Bookstore API
+
+Parameters:
+
+  AuroraVPCStackName:
+    Description: Name of the Aurora Database VPC Cloudformation stack
+    Type: String
+  AuroraDBSecretName:
+    Description: Name of the Secrets Manager secret which containers the Aurora Database details
+    Type: String
+  AuroraRDSProxyStackName:
+    Description: Name of the RDS Proxy Cloudformation stack
+    Type: String
+  SimpleBookstoreDBSchemaStackName:
+    Description: Name of the Simple Bookstore DB schema Cloudformation stack
+    Type: String
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+
+Resources:
+  BooksLambdaFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: books/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - {'Fn::ImportValue': !Sub '${SimpleBookstoreDBSchemaStackName}-DBSchemaLambdaLayerArn'}
+      Role: !GetAtt LambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: !Split [',', {'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SecretRotationLambdaSecurityGroup'}]
+        SubnetIds: !Split [',', {'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SubnetsPrivate'}]
+      Environment:
+        Variables:
+          AURORA_DB_SECRET_NAME: !Ref AuroraDBSecretName
+          AURORA_DB_PROXY_ENDPOINT: 
+            Fn::ImportValue: 
+              !Sub '${AuroraRDSProxyStackName}-SOBRDSProxyEndpoint'
+      Events:
+        ListBooks:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /book
+            Method: get
+        AddBook:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /book
+            Method: put
+  ReviewsLambdaFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: reviews/
+      Handler: main.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - {'Fn::ImportValue': !Sub '${SimpleBookstoreDBSchemaStackName}-DBSchemaLambdaLayerArn'}
+      Role: !GetAtt LambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: !Split [',', {'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SecretRotationLambdaSecurityGroup'}]
+        SubnetIds: !Split [',', {'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SubnetsPrivate'}]
+      Environment:
+        Variables:
+          AURORA_DB_SECRET_NAME: !Ref AuroraDBSecretName
+          AURORA_DB_PROXY_ENDPOINT: 
+            Fn::ImportValue: 
+              !Sub '${AuroraRDSProxyStackName}-SOBRDSProxyEndpoint'
+      Events:
+        ListReviews:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /review
+            Method: get
+        AddBook:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /review
+            Method: put
+
+  # Lambda function role
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: create-schema-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:PutResourcePolicy
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:DeleteSecret
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:TagResource
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:ListSecrets
+                  - secretsmanager:GetRandomPassword
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AuroraDBSecretName}*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+Outputs:
+
+  BooksLambdaFunction:
+    Description: Simple Online Bookstore database schema Lambda Arn
+    Value: !Ref BooksLambdaFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-BooksLambdaArn'
+
+  ReviewsLambdaFunction:
+    Description: Simple Online Bookstore database schema Lambda Arn
+    Value: !Ref ReviewsLambdaFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-ReviewsLambdaArn'
+
+  BookstoreAPIEndpoint:
+    Description: Simple Online Bookstore API Endpoint
+    # ServerlessRestApi and ServerlessRestApiProdStage are implicit resources created by SAM and referenced here
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${ServerlessRestApiProdStage}"
+    Export:
+      Name: !Sub '${AWS::StackName}-BookstoreAPIEndpoint'

@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an IAM Role for the RDS Proxy to access the Simple Book Store Aurora Postgres Database
+
+Parameters:
+  AuroraVPCStackName:
+    Description: Name of the Aurora Database VPC Cloudformation stack
+    Type: String
+  ProxyName:
+    Description: Name of the RDS proxy
+    Type: String
+    Default: SOBRDSProxy
+  AuroraDBSecretArn:
+    Description: ARN of the Aurora Database Secret
+    Type: String
+
+Resources:
+  SOBRDSProxy:
+    Type: AWS::RDS::DBProxy
+    Properties:
+      DBProxyName: !Ref ProxyName
+      EngineFamily: POSTGRESQL
+      RequireTLS: true
+      RoleArn:
+        !GetAtt SOBRDSProxyIamRole.Arn
+      Auth:
+        - {AuthScheme: SECRETS, SecretArn: !Ref AuroraDBSecretArn, IAMAuth: DISABLED, Description: sob-db-proxy-auth}
+      VpcSecurityGroupIds: [{'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SecretRotationLambdaSecurityGroup'}]
+      VpcSubnetIds: !Split [',', {'Fn::ImportValue': !Sub '${AuroraVPCStackName}-SubnetsPrivate'}]
+
+  SOBRDSProxyIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - rds.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: rds-proxy-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:PutResourcePolicy
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:DeleteSecret
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:TagResource
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:ListSecrets
+                  - secretsmanager:GetRandomPassword
+                Resource: !Ref AuroraDBSecretArn
+
+Outputs:
+  SimpleOnlineBookstoreRDSProxyRole:
+    Description: Simple Online Bookstore RDS Proxy IAM Role
+    Value: !Ref SOBRDSProxyIamRole
+    Export:
+      Name: !Sub '${AWS::StackName}-SOBRDSProxyIamRole'
+
+  SimpleOnlineBookstoreRDSProxyEndpoint:
+    Description: Simple Online Bookstore RDS Proxy Endpoint
+    Value: !GetAtt SOBRDSProxy.Endpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-SOBRDSProxyEndpoint'
+
+  SimpleOnlineBookstoreRDSProxyArn:
+    Description: Simple Online Bookstore RDS Proxy Arn
+    Value: !GetAtt SOBRDSProxy.DBProxyArn
+    Export:
+      Name: !Sub '${AWS::StackName}-SOBRDSProxyArn'
+ 
