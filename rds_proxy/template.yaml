@@ -9,6 +9,9 @@ Parameters:
     Description: Name of the RDS proxy
     Type: String
     Default: SOBRDSProxy
+  AuroraDBClusterId:
+    Description: Cluster ID of the Aurora Database
+    Type: String
   AuroraDBSecretArn:
     Description: ARN of the Aurora Database Secret
     Type: String
@@ -56,6 +59,15 @@ Resources:
                   - secretsmanager:ListSecrets
                   - secretsmanager:GetRandomPassword
                 Resource: !Ref AuroraDBSecretArn
+
+  SOBRDSProxyTargetGroup:
+    Type: AWS::RDS::DBProxyTargetGroup
+    Properties: 
+      DBClusterIdentifiers: 
+        - !Ref AuroraDBClusterId
+      DBProxyName: !Ref SOBRDSProxy
+      TargetGroupName: default
+
 
 Outputs:
   SimpleOnlineBookstoreRDSProxyRole:
