@@ -1,20 +1,21 @@
 
 # Intro
 
-This project is companion source code to the AWS Database blog post: [Using Python SQL Alchemy ORM to Interact with an Amazon Aurora Database from a Serverless Application](TODO). Please read the blog post for details.
+This project is companion source code to the AWS Database blog post: [Use Python SQLAlchemy ORM to interact with an Amazon Aurora database from a serverless application](TODO). Please read the blog post for details.
 
-Below, we depict the AWS architecture discussed in the blog as a reference. The various components depicted in the architecture can be deployed using the code in this repository.
+In the diagram below, we depict the AWS architecture discussed in the blog as a reference. The various components depicted in the architecture can be deployed using the code in this repository. 
 
 ![Alt text](docs/blog-sql-alchemy-solution-diagram.png?raw=true "Python SQLAlchemy in an AWS Bookstore Serverless Application")
 
-# Requirements
+# Prerequisites
 
 In order to deploy the solution in this repository you'll need the following:
 
-* Access to an AWS account
-* [AWS Command Line Interface](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html)
-* [AWS SAM Command Line Interface](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* Python 3.7.x installed
+* An AWS account
+* The latest version of the AWS Command Line Interface ([AWS CLI](https://aws.amazon.com/cli/)) configured and with permissions to deploy to the AWS account
+* The [AWS Serverless Model (SAM)](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html) CLI
+* Python 3.8
+* Clone this repository into your local environment
 
 # Installing the required libraries in the Lambda Layer
 
@@ -28,7 +29,7 @@ python -m pip install -r requirements.txt -t "python/"
 ```
 
 # Deploying the solution
-Please check this [blog post](TODO) for details.
+Please check our [blog post](TODO) for details.
 
 ## Security
 
