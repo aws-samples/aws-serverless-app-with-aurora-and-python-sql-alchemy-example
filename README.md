@@ -1,7 +1,7 @@
 
 # Intro
 
-This project is companion source code to the AWS Database blog post: [Use Python SQLAlchemy ORM to interact with an Amazon Aurora database from a serverless application](https://aws.amazon.com/blogs/database/use-python-sqlalchemy-orm-to-interact-with-an-amazon-aurora-database-from-a-serverless-application/). Please read the blog post for details.
+This project is companion source code to the AWS Database blog post: [Use Python SQLAlchemy ORM to interact with an Amazon Aurora database from a serverless application](https://aws.amazon.com/blogs/database/use-python-sqlalchemy-orm-to-interact-with-an-amazon-aurora-database-from-a-serverless-application/). Please read the blog post for details.
 
 In the diagram below, we depict the AWS architecture discussed in the blog as a reference. The various components depicted in the architecture can be deployed using the code in this repository. 
 
