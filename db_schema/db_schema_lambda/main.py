@@ -59,7 +59,7 @@ def create(event, context):
     logger.info(f'Retrieving database access information from Secrets Manager\'s secret: "{db_secret_name}"')
     secrets = get_db_secrets()
     db_name = secrets['dbname']
-    db_conn_string = f"postgres://{secrets['username']}:{secrets['password']}@{db_proxy_endpoint}:{secrets['port']}/{db_name}?sslmode=require"
+    db_conn_string = f"postgresql://{secrets['username']}:{secrets['password']}@{db_proxy_endpoint}:{secrets['port']}/{db_name}?sslmode=require"
 
     logger.info(f'Creating SQLAlchemy database engine for database: "{db_name}"')
     engine = create_db_engine(db_conn_string)
