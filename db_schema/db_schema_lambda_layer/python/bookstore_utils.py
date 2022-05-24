@@ -14,14 +14,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-This script orchestrates the enablement and centralization of SecurityHub
-across an enterprise of AWS accounts.
-It takes in a list of AWS Account Numbers, iterates through each account and
-region to enable SecurityHub.
-It creates each account as a Member in the SecurityHub Master account.
-It invites and accepts the invite for each Member account.
-The Security Hub automation is based on the scripts published at
-https://github.com/awslabs/aws-securityhub-multiaccount-scripts
+This script creates the connection to the database using sqlalchemy.
 """
 
 from sqlalchemy import create_engine
