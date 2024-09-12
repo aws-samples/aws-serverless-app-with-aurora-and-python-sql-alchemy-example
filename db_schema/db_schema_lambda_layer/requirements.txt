@@ -2,3 +2,4 @@ boto3
 psycopg2-binary
 sqlalchemy
 crhelper
+aws-psycopg2
