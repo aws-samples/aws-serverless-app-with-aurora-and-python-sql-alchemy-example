@@ -96,6 +96,8 @@ Resources:
             - python3.8
           LicenseInfo: 'MIT'
           RetentionPolicy: Retain
+      Metadata:
+        BuildMethod: makefile
 
 Outputs:
 
